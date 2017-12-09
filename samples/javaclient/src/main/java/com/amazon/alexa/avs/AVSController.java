@@ -22,6 +22,7 @@ import com.amazon.alexa.avs.http.AVSClient;
 import com.amazon.alexa.avs.http.AVSClientFactory;
 import com.amazon.alexa.avs.http.LinearRetryPolicy;
 import com.amazon.alexa.avs.http.ParsingFailedHandler;
+import com.amazon.alexa.avs.led.LedController;
 import com.amazon.alexa.avs.message.request.RequestBody;
 import com.amazon.alexa.avs.message.request.RequestFactory;
 import com.amazon.alexa.avs.message.request.settings.LocaleSetting;
@@ -44,6 +45,7 @@ import com.amazon.alexa.avs.wakeword.WakeWordDetectedHandler;
 import com.amazon.alexa.avs.wakeword.WakeWordIPC;
 import com.amazon.alexa.avs.wakeword.WakeWordIPC.IPCCommand;
 import com.amazon.alexa.avs.wakeword.WakeWordIPCFactory;
+import com.pi4j.io.gpio.RaspiPin;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,6 +123,8 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
     private CardHandler cardHandler;
     private ResultListener listener;
 
+    private LedController led;
+    
     public AVSController(AVSAudioPlayerFactory audioFactory, AlertManagerFactory alarmFactory,
             AVSClientFactory avsClientFactory, DialogRequestIdAuthority dialogRequestIdAuthority,
             WakeWordIPCFactory wakewordIPCFactory, DeviceConfig config) throws Exception {
@@ -216,6 +220,9 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
         scheduledExecutor.scheduleAtFixedRate(new UserInactivityReport(),
                 USER_INACTIVITY_REPORT_PERIOD_HOURS, USER_INACTIVITY_REPORT_PERIOD_HOURS,
                 TimeUnit.HOURS);
+        
+        //init led controller
+        this.led = new LedController(RaspiPin.GPIO_00);
     }
 
     public void init(ListenHandler listenHandler, NotificationIndicator notificationIndicator,
@@ -300,7 +307,9 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
     // start the recording process and send to server
     // takes an optional RMS callback and an optional request callback
     public void startRecording(RecordingRMSListener rmsListener, RequestListener requestListener) {
-
+        //start led
+        this.led.turnOn();
+        
         if (this.wakeWordAgentEnabled) {
 
             acceptWakeWordEvents = false;
@@ -640,6 +649,8 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
             }
             acceptWakeWordEvents = true;
         }
+         //stop led
+        this.led.turnOff();
     }
 
     // audio state callback for when recording has started
